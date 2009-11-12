@@ -1,0 +1,11 @@
+name = Node Select
+description = "Provides a hovering AJAX node search area, very useful to search nodes and drop them on CCK node references."
+version = "6.x-1.0"
+package = CCK
+core = 6.x
+
+dependencies[] = views
+dependencies[] = content
+dependencies[] = nodereference
+dependencies[] = jquery_ui
+

@@ -1,0 +1,12 @@
+.form-autocomplete {
+  display:block;
+}
+.nsdrop-active {
+  background-color: yellow;
+}
+.nsdrop-hover {
+  background-color: orange;
+}
+.nsdrag-processed {
+  cursor:pointer;
+}

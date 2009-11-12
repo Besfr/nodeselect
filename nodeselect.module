@@ -1,0 +1,433 @@
+<?php
+/**
+ * @file
+ * Allow us to use a more powerful interface to search
+ * and insert nodes into CCK Nodereference fields.
+ */
+
+/**
+ * Implementation of hook_init()
+ */
+function nodeselect_init() 
+{
+  // Add the necessary CSS and JS
+  $path = drupal_get_path('module', 'nodeselect');
+  drupal_add_css($path .'/nodeselect.css');
+  jquery_ui_add(array('ui.draggable', 'ui.droppable'));
+  drupal_add_js($path .'/nodeselect.js');
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+
+function nodeselect_perm() {
+  return array('administer nodeselect', 'use nodeselect');
+}
+
+
+/**
+ * Implementation of hook_help().
+ *
+ */
+ /*
+function nodeselect_help($section) {
+  switch ($section) {
+    case 'admin/settings/nodeselect':
+      return '<p>Select below CCK fields (content type nodereference) you want to replace
+              by NodeSelect fields. These fields, which are usually evidenced by a text field, 
+              will be replaced by a list AJAX in , which you can add or rearrange the elements while the drag & drop</p>
+              <p><strong>IMPORTANT</strong>. The selected fields will be replaced in all forms where they appear.</p>';
+  }
+}
+*/
+
+/**
+ * Implementation of hook_menu().
+ *
+ */
+function nodeselect_menu() {
+	$items = array();
+/*
+	$items['admin/aef/nodeselect'] = array(
+		'title' => 'Node Select', 
+		'description' => 'Replaces the classic fields of a CCK Nodereference by a more flexible AJAX interface', 
+		'page callback' => 'drupal_get_form', 
+		'page arguments' => array('nodeselect_settings'), 
+		'access arguments' => array('administer nodeselect'), 
+	);
+*/
+	$items['nodeselect/search'] = array(
+		'page callback' => 'nodeselect_jquery_search', 
+		'type' => MENU_CALLBACK, 
+		'access arguments' => array('use nodeselect'), 
+	);
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_views_api
+ */
+function nodeselect_views_api() {
+  return array(
+    'api' => 2, 
+    'path' => drupal_get_path('module', 'nodeselect') .'/views'
+  );
+}
+
+/**
+ * Implementation of hook_theme_registry_alter.
+ * Make the theme engine use page-node-nodeselect_preview_notheme.tpl.php &&
+ * page-node-edit-nodeselect_preview_notheme.tpl.php of this module directory.
+ */
+ /*
+function nodeselect_theme_registry_alter(&$theme_registry)
+{
+	$modulepath = drupal_get_path('module', 'nodeselect');
+
+	//Add this theme to the list of path to look for page templates
+	$originalpath = array_shift($theme_registry['page']['theme paths']);
+	array_unshift($theme_registry['page']['theme paths'], $originalpath, $modulepath . "/theme");
+}
+*/
+
+
+/**
+ * Implementation of CCK's hook_field_formatter_info().
+ */
+ /*
+function nodeselect_field_formatter_info() {
+	$formatters = array(
+		'nodeselect_preview' => array(
+			'label' => t('Global: Search result entry for nodeselect'),
+			'field types' => array('nodereference'),
+			'description' => t('Preview for search results.'),
+		),
+	);
+	return $formatters;
+}
+*/
+/**
+ * Implementation of hook_theme()
+ */
+ /*
+function nodeselect_theme($existing, $type, $theme, $path)
+{
+	return array(
+    //Formatter nodeselect_preview
+		'nodeselect_formatter_nodeselect_preview' => array(
+			'arguments' => array('element' => null),
+			'file' => 'nodeselect_formatter.inc',
+		),
+		'nodeselect_preview' => array(
+			'arguments' => array('node' => null),
+      'template' => 'nodeselect_preview',
+      'path' => drupal_get_path('module', 'nodeselect') . '/theme',
+		),
+  );
+}
+*/
+/**
+ * Implementation of hook_preprocess()
+ */
+ /*
+function nodeselect_preprocess_nodeselect_preview(&$variables)
+{
+  $content_types = content_types(); // All content types
+
+  $variables['title']      = l('<span class="nodereference">' . check_plain($variables['node']->title) . ' [nid:' . $variables['node']->nid . ']</span>', 'node/' . $variables['node']->nid . '/aef_embedded_edit', array('attributes' => array('class' => 'nodeselect-node'), 'html' => true));
+  $variables['date']      = format_date($variables['node']->created);
+  $variables['name']      = theme('username', $variables['node']);
+  $variables['node_type'] = $content_types[$variables['node']->type]['name'];
+  $variables['edit_link'] = l('edit', 'node/' . $variables['node']->nid . '/edit/aef_embedded_edit', array('attributes' => array('class' => 'nodeselect-node')));
+  $variables['edit_new_window_link'] = l('edit in new window', 'node/' . $variables['node']->nid . '/edit', array('attributes' => array('target' => '_blank')));
+  if(module_exists('flag'))
+  {
+    $variables['bookmark_link'] = flag_create_link('bookmarks', $variables['node']->nid);
+  }
+
+}
+*/
+
+function nodeselect_alter_field($form, &$form_state) {
+  $nodeselect_droppable_fields = variable_get('nodeselect_droppable_fields', array());
+  foreach ($nodeselect_droppable_fields as $field_name => $droppable) {
+    if (isset($form[$field_name]) && $droppable) {
+      nodeselect_add_droppable_class($form[$field_name]);
+    }
+  }
+  return $form;
+}
+
+function nodeselect_add_droppable_class(&$elements) {
+  foreach (element_children($elements) as $key) {
+    if (isset($elements[$key]) && $elements[$key]) {
+      // Recurse through all children elements.
+      nodeselect_add_droppable_class($elements[$key]);
+    }
+  }
+  if ($elements['#name'] != 'field_node_box_add_more') {
+    if (!isset($elements['#attributes'])) {
+      $elements['#attributes'] = array();
+    }
+    if (strlen($elements['#attributes']['class'])) {
+      $elements['#attributes']['class'] .= ' nsdrop';
+    }
+    else {
+      $elements['#attributes']['class'] = 'nsdrop';
+    }
+  }
+}
+
+
+/**
+ * Implementation du hook_form_alter().
+ *
+ */
+function nodeselect_form_alter(&$form, &$form_state, $form_id) {
+  // If we are in a node edit form, and not in the admin pages
+/*
+  if ((strpos($form['form_id']['#value'], '_node_form') !== false ||
+       strpos($form_state['post']['form_id'], '_node_form') !== false) && arg(0) != 'admin') {
+
+    // Adapt the CCK noreference fields for nodeselect use
+
+    // Create a JS array containing the list of nodereference fields that should be used
+    // as a drop target for Nodeselect.
+    // These fields can be selected in the admin panel
+    $fields = nodeselect_get_fields();
+    $fields = '["'. implode('", "', $fields) .'"];';
+    $data = 'var nodeselect_fields = '. $fields;
+
+    $nodeselect_display_edit_link = variable_get('nodeselect_display_edit_link', array('display_edit_link'=>'display_edit_link'));
+    $data .= 'var nodeselect_display_edit_link = "'.$nodeselect_display_edit_link['display_edit_link'].'";';
+
+    $nodeselect_display_view_link = variable_get('nodeselect_display_view_link', array('display_view_link'=>'display_view_link'));
+    $data .= 'var nodeselect_display_view_link = "'.$nodeselect_display_view_link['display_view_link'].'";';
+    drupal_add_js($data, $type = 'inline');
+
+  }
+*/
+  // We will alter the nodereference field of the node form (add and edit)
+  if ($form['#id'] == 'node-form') {
+    $form['#after_build'][] = 'nodeselect_alter_field';
+  }
+  switch($form_id)
+  {
+    // Adding the droppable option to the nodereference field settings
+    case 'content_field_edit_form':
+      if (($form['#field']['type'] == 'nodereference') &&
+          ($form['#field']['widget']['type'] == 'nodereference_autocomplete')) {
+
+        $nodeselect_droppable_fields = variable_get('nodeselect_droppable_fields', array());
+        $is_droppable = 0;
+        if (isset($nodeselect_droppable_fields[$form['#field']['field_name']])) {
+          $is_droppable = $nodeselect_droppable_fields[$form['#field']['field_name']];
+        }
+        $form['field']['nodeselect_droppable_field'] = array(
+          '#type' => 'checkbox',
+          '#title' => t('Make this field droppable'),
+          '#description' => t('If checked the field will become droppable and will accept content from draggable views'),
+          '#default_value' => $is_droppable, 
+        );
+        $form['#submit'][] = 'nodeselect_droppable_field_submit';
+      }
+    break;
+  }
+}
+
+function nodeselect_droppable_field_submit($form, &$form_state) {
+  $field = $form_state['values']['field_name'];
+  $is_droppable = $form_state['values']['nodeselect_droppable_field'];
+
+  $nodeselect_droppable_fields = variable_get('nodeselect_droppable_fields', array());
+  $nodeselect_droppable_fields[$field] = $is_droppable;
+  variable_set('nodeselect_droppable_fields', $nodeselect_droppable_fields);
+}
+
+/**
+ * Callback menu -- configuration form in the admin
+ *
+ * Allow us to select the nodereference fields that should be used
+ * as drop target by nodeselect.
+ *
+ */
+ /*
+function nodeselect_settings() {
+  $form = array();
+  $fields = content_fields(); // All CCK fields
+  $options = array();
+  $content_types = content_types(); // All content types
+  foreach ($fields as $field) {
+    if ($field['type'] == 'nodereference') {
+      // Fetch all the content types using the current CCK field
+      $result_types = array();
+      foreach ($content_types as $content_type) {
+        if(array_key_exists($field['field_name'] , $content_type['fields']))
+          $result_types[] = l($content_type['name'], 'admin/content/node-type/'. $content_type['url_str'] .'/fields');
+      }
+      $options[$field['field_name']] = $field['field_name'] .' <small>('.t('used in').' '. implode(', ', $result_types) .')</small>';
+    }
+  }
+  $form['nodeselect_fields'] = array(
+    '#type' => 'checkboxes', 
+    '#title' => t('Nodereference fields to replace'), 
+    '#options' => $options, 
+    '#default_value' => variable_get('nodeselect_fields', array()), 
+  );
+
+  // exlclure more content type for search
+  $options_ct = array();
+  $content_type = content_types();
+  foreach ($content_types as $content_type) {
+		$options_ct[$content_type['type']] =$content_type['name'];
+  }
+  $form['nodeselect_fields_no_search'] = array(
+    '#type' => 'checkboxes', 
+    '#title' => t('Select the content types used in research'), 
+    '#options' => $options_ct, 
+    '#default_value' => variable_get('nodeselect_fields_no_search', array()), 
+  );
+
+  // display edit_link
+  $options_edit_link = array();
+  $content_type = content_types();
+  $options_edit_link["display_edit_link"] = t("Display edit link");
+  
+  $form['nodeselect_display_edit_link'] = array(
+    '#type' => 'checkboxes', 
+    '#title' => t('Do you want to display edit link ?'), 
+    '#options' => $options_edit_link, 
+    '#default_value' => variable_get('nodeselect_display_edit_link', array('display_edit_link'=>'display_edit_link')), 
+  );
+
+  // display view_link
+  $options_view_link = array();
+  $content_type = content_types();
+  $options_view_link["display_view_link"] = t("Display view link");
+  
+  $form['nodeselect_display_view_link'] = array(
+    '#type' => 'checkboxes', 
+    '#title' => t('Do you want to display view link ?'), 
+    '#options' => $options_view_link, 
+    '#default_value' => variable_get('nodeselect_display_view_link', array('display_view_link'=>'display_view_link')), 
+  );
+
+
+  // number of node to display
+  $form['aef_number_node'] = array(
+    '#type' => 'textfield', 
+    '#title' => t('Number of node to display '), 
+    '#default_value' => variable_get('aef_number_node', 40), 
+  );
+
+  //If workflow, select which workflow to display
+  if(module_exists('workflow'))
+  {
+    $form['nodeselect_workflow'] = array(
+      '#type' => 'select', 
+      '#title' => t('The workflow to use for the search '),
+      '#options' => array('' => t('- none -')) + workflow_get_all(),
+      '#default_value' => variable_get('nodeselect_workflow', ''), 
+    );
+  }
+
+
+
+  return system_settings_form($form);
+}
+*/
+
+/**
+ * Callback menu -- Handle the AJAX search queries
+ *
+ * Return the list of nodes matching the given criteria in the URL
+ *
+ * @return
+ *   Node list in JSON format
+ */
+function nodeselect_jquery_search() {
+
+  //Search using a view
+  $view = views_get_view('nodeselect_content');
+  $view->set_exposed_input(
+    array(
+      "title" => $_GET['nodetitle'], 
+      "type" => $_GET['nodetype'], 
+      "created" => array(
+        "min" => (($_GET['nodecreated']['date'])?$_GET['nodecreated']['date']:"1971-01-01"), 
+        "max" => (($_GET['nodecreated2']['date'])?
+          date('Y-m-d', strtotime($_GET['nodecreated2']['date']) + 3600*24):"2030-01-01"),
+      ),
+      "status" => (($_GET['nodepublished'] == "")?"All":$_GET['nodepublished']), 
+      "nid" => $_GET['nodenid'],
+      "sid" => (($_GET['nodeworkflow'] == "")?"All":$_GET['nodeworkflow']),
+    )
+  );
+  $view->init_display();
+  $view->display_handler->set_option('items_per_page', variable_get('aef_number_node', 40));
+  $view->pre_execute();
+  $view->execute();
+
+
+  foreach($view->result as $delta => $result)
+  {
+    $items[] = $result;
+  }
+
+  //Preformat some parts of the results
+  if (count($items) > 0) {
+
+    $returnitems = array();
+
+    foreach($items as $item) {
+      $item->prettydate = format_date($item->node_created, 'small');
+      $item->title .= " [nid:$item->nid]";
+      $item->prettytype = node_get_types('name', $item->node_type);
+      
+      if(module_exists('flag'))
+      {
+        $item->bookmark_link = flag_create_link('bookmarks', $item->nid);
+      }
+
+      $returnitems[] = $item;
+    }
+
+    print drupal_to_js($returnitems); 
+	
+
+  }
+  else {
+    print '[]'; // No results
+  }
+}
+
+/**
+ * Return the list of CCK nodereference fields that will be used by Nodeselect
+ * 
+ * Note: we are not directly using the value of variable_get('nodeselect_fields', array())
+ * because it does not have the right format:
+ *   Array (
+ *     [field_node1] => field_node1
+ *     [field_node4] => field_node4
+ *     [field_node6] => field_node6
+ *     [field_node2] => 0
+ *     [field_node3] => 0 
+ *   )
+ */
+function nodeselect_get_fields() {
+  $fields = array();
+  $nodeselect_fields = variable_get('nodeselect_fields', array());
+  foreach ($nodeselect_fields as $field) {
+    if ($field) {
+      $fields[$field] = $field;
+    }
+  }
+  return $fields;
+}
+
+
+function nodeselect_views_data_alter(&$view) {
+	//dpr($view);
+}
