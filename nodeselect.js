@@ -1,9 +1,7 @@
 var Nodeselect = Nodeselect || {};
 var AEFNodeselect = AEFNodeselect || {};
-//var DATE_FORMAT = 'jj/mm/aaaa';
-var nodereference_found = false;
-var nodereference_processed_items = new Array();
-var index_processed_items = 0;
+var hasDroppable = 0;
+
 
 
 /**
@@ -20,10 +18,7 @@ $(document).ready(function() {
  */
  
 Drupal.behaviors.nodeselect_behavior = function() {
-  //
   // Handle the Droppable areas
-  //
-  
   $('.nsdrop:not(.nsdrop-processed)').addClass('nsdrop-processed').each(function(){
     $(this).droppable({
      	accept: function (droppableElement) {
@@ -37,40 +32,40 @@ Drupal.behaviors.nodeselect_behavior = function() {
         Nodeselect.ondropActionExemple(event, ui, $(this));
       }
     });
+    hasDroppable = 1; 
   });
 
-
-  //
-  // Add the draggable behavior to results
-  //
-  $('.nsdrag:not(.nsdrag-processed)').addClass('nsdrag-processed').each(function () {
-    $(this).draggable({
-  		//fx: 	    30,
-  		//ghosting:	false,
-      containment: 'document',
-      cursor: 'pointer',
-  		revert: true,
-      // scroll: true, // need to autoscroll
-      snap: true,
-  		zIndex: 	1000,
-      start: function () {
-        //Check if we are fixed
-        var element = $(this);
-        element.attr('element-fixed', 'false');
-        $(this).parents().each(function() {
-          if($(this).css('position') == 'fixed')
-            element.attr('element-fixed', 'true');
-        });
-      },
-      drag: function (x,y) {
-        //If this element is inside a fixed element, we need to adjust the position of the dragged element.
-        if($(this).attr('element-fixed') == "true")
-          return {x: x + $(window).scrollLeft(), y: y + $(window).scrollTop()};
-        else
-          return {x: x, y: y};
-      }
-  	});
-  });
+  if (hasDroppable) {
+    // Add the draggable behavior to results
+    $('.nsdrag:not(.nsdrag-processed)').addClass('nsdrag-processed').each(function () {
+      $(this).draggable({
+        //fx: 	    30,
+        //ghosting:	false,
+        containment: 'document',
+        cursor: 'pointer',
+        revert: true,
+        // scroll: true, // need to autoscroll
+        snap: true,
+        zIndex: 	1000,
+        start: function () {
+          //Check if we are fixed
+          var element = $(this);
+          element.attr('element-fixed', 'false');
+          $(this).parents().each(function() {
+            if($(this).css('position') == 'fixed')
+              element.attr('element-fixed', 'true');
+          });
+        },
+        drag: function (x,y) {
+          //If this element is inside a fixed element, we need to adjust the position of the dragged element.
+          if($(this).attr('element-fixed') == "true")
+            return {x: x + $(window).scrollLeft(), y: y + $(window).scrollTop()};
+          else
+            return {x: x, y: y};
+        }
+      });
+    });
+  }
 
 
   //
@@ -87,67 +82,6 @@ Nodeselect.isElementDroppable = function(droppableElement) {
 Nodeselect.ondropActionExemple = function(event, ui, droppable) {
   droppable.attr('value', ui.draggable.html());
 }
-
-/**
- * Add the NodeSelect functionalities via several operations.
- */
-/**AEFNodeselect.ReplaceNodeReferenceFields = function() {
-  // WARNING ! The nodeselect_fields variable, which contains nodereference
-  // fields to be used by nodeselect, only exists on node edit forms
-  if (typeof aef_nodeselect_fields != 'undefined') {
-
-    // Look on the DOM if there are nodereference fields to handle
-    nodereference_found = false;  // global variable
-
-    // For each CCK nodereference fields selected in the admin,
-    // look for the corresponding textfields
-    for (var j = 0; j < aef_nodeselect_fields.length; j++) {
-      nodeselect_field = aef_nodeselect_fields[j];
-
-      // Transform the Drupal internal ID into the corresponding HTML id, like edit-field-node1-node-name
-      var html_id = 'edit-'+ nodeselect_field.replace(/\_/g, '-') +'-';
-      //alert(html_id);
-
-      // For each nodereference field
-      $(':text[id^="'+ html_id +'"]').each(function(index) {
-
-        nodereference_found = true;
-
-        // Node: some fields comes 2 times here, it's probably due to a bad selector.
-        // I store processed items into the global variable nodereference_processed_items to
-        // avoid double processing
-        if (nodereference_processed_items.indexOf(this.id) == -1) {
-          $(this).addClass('aef-nodeselect-droppable');  // Make the field aef-nodeselect-droppable
-	
-          nodereference_processed_items[index_processed_items++] = this.id;
-        }
-
-      });
-
-    }
-    //Reinit the global variable nodereference_processed_items
-    nodereference_processed_items = new Array();
-
-    //We added the edit/view links, add JS so that edition happen in our preview window
-    AEFNodeselect.HandlePreviewAreaLinks();
-
-    // By default, the block is shown. If no nodereference fields are found, hide it.
-    if (!nodereference_found) {
-      $('.block-nodeselect').hide();
-    }
-    else {
-
-      // Handle the node deletion links.
-      $('.nodeselect-delete-link').click(function() {
-
-        return AEFNodeselect.HandleNodeSelectDelete(this);
-
-      });
-    }
-
-  }
-}*/
-
 
 AEFNodeselect.AddEditCommands = function(item, itemvalue) {
 
