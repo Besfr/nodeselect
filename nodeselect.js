@@ -18,7 +18,6 @@ $(document).ready(function() {
  */
  
 Drupal.behaviors.nodeselect_behavior = function() {
-  // Handle the Droppable areas
   $('.nsdrop:not(.nsdrop-processed)').addClass('nsdrop-processed').each(function(){
     $(this).droppable({
      	accept: function (droppableElement) {
@@ -27,25 +26,29 @@ Drupal.behaviors.nodeselect_behavior = function() {
       //accept: '.nsdrag-processed',
      	activeClass: 'nsdrop-active',
      	hoverClass:	'nsdrop-hover',
-      tolerance: 'touch',
+      tolerance: 'pointer',
      	drop:	function(event, ui) {
         Nodeselect.ondropActionExemple(event, ui, $(this));
       }
     });
-    hasDroppable = 1; 
+    hasDroppable = 1;
   });
 
   if (hasDroppable) {
-    // Add the draggable behavior to results
     $('.nsdrag:not(.nsdrag-processed)').addClass('nsdrag-processed').each(function () {
       $(this).draggable({
-        //fx: 	    30,
-        //ghosting:	false,
+        // which container the helper is attach
+        appendTo: 'body',
+        helper: function() {
+           return $(this).clone().css('width', this.offsetWidth)[0];
+        },
+        // allow to drag inside all the document
         containment: 'document',
         cursor: 'pointer',
-        revert: true,
+        // when release, draw back the helper to his position
+        //revert: true,
+        //revertDuration: 250,
         // scroll: true, // need to autoscroll
-        snap: true,
         zIndex: 	1000,
         start: function () {
           //Check if we are fixed
