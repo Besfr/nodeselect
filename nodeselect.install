@@ -1,4 +1,9 @@
 <?php
+// $Id$
+/**
+ * @file
+ * Install, update and uninstall functions for the node select module.
+ */
 
 /**
  * Implementation of hook_install.
