@@ -1,4 +1,5 @@
-<?php
+<?php 
+// $Id$
 /**
  * @file
  * Allow us to use a more powerful interface to search
@@ -8,8 +9,7 @@
 /**
  * Implementation of hook_init()
  */
-function nodeselect_init() 
-{
+function nodeselect_init() {
   // Add the necessary CSS and JS
   $path = drupal_get_path('module', 'nodeselect');
   drupal_add_css($path .'/nodeselect.css');
@@ -34,6 +34,11 @@ function nodeselect_views_api() {
     'path' => drupal_get_path('module', 'nodeselect') .'/views'
   );
 }
+
+/*
+ * After build function for node-form
+ * It add the droppable class to the input fields
+ */
 
 function nodeselect_alter_field($form, &$form_state) {
   $nodeselect_droppable_fields = variable_get('nodeselect_droppable_fields', array());
@@ -75,8 +80,7 @@ function nodeselect_form_alter(&$form, &$form_state, $form_id) {
   if ($form['#id'] == 'node-form') {
     $form['#after_build'][] = 'nodeselect_alter_field';
   }
-  switch($form_id)
-  {
+  switch ($form_id) {
     // Adding the droppable option to the nodereference field settings
     case 'content_field_edit_form':
       if (($form['#field']['type'] == 'nodereference') &&
